@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>CPSテスト（5秒・1ms）</title>
+<style>
+:root{--bg:#f4f1ea;--fg:#1d1d1f;--sub:#6b6b70;--accent:#e4572e;--bar:#d9d4c7;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#17171a;--fg:#f2f2f3;--sub:#9a9aa2;--accent:#ff7a50;--bar:#2c2c32}}
+:root[data-theme="dark"]{--bg:#17171a;--fg:#f2f2f3;--sub:#9a9aa2;--accent:#ff7a50;--bar:#2c2c32}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0;overflow:hidden;overscroll-behavior:none;background:var(--bg);color:var(--fg);font-family:"Hiragino Sans","Noto Sans JP",system-ui,sans-serif;-webkit-user-select:none;user-select:none;touch-action:none;-webkit-tap-highlight-color:transparent}
+#cv{position:fixed;inset:0;width:100%;height:100%;pointer-events:none}
+#area{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;cursor:pointer;text-align:center;padding:24px 24px 34% ;overflow:hidden}
+.label{font-size:14px;letter-spacing:.2em;color:var(--sub)}
+#count{font-size:min(30vw,180px);font-weight:800;line-height:1;font-variant-numeric:tabular-nums}
+#time{font-size:28px;font-variant-numeric:tabular-nums;color:var(--accent);font-weight:700}
+#msg{font-size:17px;color:var(--sub);max-width:28em}
+#bar{position:fixed;left:0;right:0;top:env(safe-area-inset-top,0px);height:8px;background:var(--bar);z-index:2}
+#fill{height:100%;width:100%;background:var(--accent);transform-origin:left}
+#result{display:none;flex-direction:column;align-items:center;gap:6px}
+#cps{font-size:min(20vw,120px);font-weight:800;color:var(--accent);line-height:1}
+#detail{font-size:15px;color:var(--sub)}
+button{margin-top:10px;font:inherit;font-size:18px;font-weight:700;padding:12px 34px;border:0;border-radius:999px;background:var(--fg);color:var(--bg);cursor:pointer}
+#best{position:fixed;top:calc(18px + env(safe-area-inset-top,0px));font-size:14px;color:var(--sub)}
+
+#rbtn,#fsbtn{position:fixed;top:calc(12px + env(safe-area-inset-top,0px));right:12px;z-index:6;margin:0;font-size:14px;padding:8px 16px;background:var(--bar);color:var(--fg)}
+#fsbtn{right:auto;left:12px}
+#panel{position:fixed;inset:0;z-index:10;display:none;align-items:center;justify-content:center;background:color-mix(in srgb,var(--bg) 70%,transparent);backdrop-filter:blur(6px);padding:16px}
+#card{background:var(--bg);color:var(--fg);border:1px solid var(--bar);border-radius:16px;width:min(440px,100%);max-height:90%;display:flex;flex-direction:column;padding:16px;gap:10px;box-shadow:0 10px 40px rgba(0,0,0,.25)}
+#card h2{margin:0;font-size:18px}
+#rstat{font-size:12px;color:var(--sub);min-height:1.2em}
+#nameRow{display:flex;gap:8px}
+#nameRow input{flex:1;min-width:0;font:inherit;font-size:16px;padding:8px 12px;border-radius:10px;border:1px solid var(--bar);background:transparent;color:var(--fg);-webkit-user-select:text;user-select:text}
+#nameRow button,#card .close{margin:0;font-size:14px;padding:8px 16px}
+#list{overflow-y:auto;touch-action:pan-y;font-size:15px;min-height:60px}
+.row{display:flex;flex-direction:column;gap:4px;padding:8px 4px;border-bottom:1px solid var(--bar)}
+.top{display:flex;gap:10px}
+.low{display:flex;align-items:flex-end;gap:10px}
+.strip{flex:1;height:18px;display:flex;align-items:stretch}
+.strip i{flex:1;position:relative}
+.strip i.on::after{content:'';position:absolute;left:50%;top:0;bottom:0;width:1.5px;margin-left:-.75px;background:#ff8c1a}
+.mn{font-size:12px;color:var(--sub);font-variant-numeric:tabular-nums;white-space:nowrap}
+.tag{font-size:12px;color:var(--sub);margin-left:6px}
+.row.me{background:color-mix(in srgb,var(--accent) 14%,transparent);border-radius:6px}
+.row .rk{width:2em;color:var(--sub);font-variant-numeric:tabular-nums}
+.row .nm{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.row .sc{font-variant-numeric:tabular-nums;font-weight:700;color:var(--accent)}
+.empty{color:var(--sub);padding:10px 4px}
+#warn{font-size:14px;color:var(--accent);min-height:1.2em;max-width:26em}
+</style>
+</head>
+<body>
+<canvas id="cv"></canvas>
+<div id="bar"><div id="fill"></div></div>
+<div id="area">
+  <div id="best"></div>
+  <div class="label">CLICK PER SECOND</div>
+  <div id="count">0</div>
+  <div id="time">5.000 秒</div>
+  <div id="msg">画面のどこでもクリック（タップ）で開始！スペースキーも使えます。画面の横幅＝5000ms、1目盛り＝1ms</div>
+  <div id="result">
+    <div class="label">結果</div>
+    <div id="cps">0.0</div>
+    <div id="detail"></div>
+    <div id="warn"></div>
+    <button id="retry">もう一度</button>
+  </div>
+</div>
+<button id="fsbtn">⛶ 全画面</button>
+<button id="rbtn">🏆 ランキング</button>
+<div id="panel"><div id="card">
+  <h2>ランキング（5秒）</h2>
+  <div id="rstat">等間隔の連打・同じ間隔パターンの繰り返し（オートクリッカー）は記録対象外です</div>
+  <div id="nameRow"><input id="name" maxlength="16" placeholder="ニックネーム"><button id="save">保存</button></div>
+  <div id="list"><div class="empty">読み込み中…</div></div>
+  <button class="close" id="rclose">閉じる</button>
+</div></div>
+<script>
+(function(){
+  var D=5000, cv=document.getElementById('cv'), g=cv.getContext('2d'),
+      area=document.getElementById('area'), countEl=document.getElementById('count'),
+      timeEl=document.getElementById('time'), msg=document.getElementById('msg'),
+      fill=document.getElementById('fill'), result=document.getElementById('result'),
+      cpsEl=document.getElementById('cps'), detail=document.getElementById('detail'),
+      bestEl=document.getElementById('best'), retry=document.getElementById('retry');
+  var state='idle', n=0, t0=0, raf=0, lockUntil=0, best=0, marks=new Uint8Array(D), ts=[], elapsed=0, W=0, H=0, dpr=1;
+  try{best=parseFloat(localStorage.getItem('cps-best'))||0}catch(e){}
+  function showBest(){bestEl.textContent=best?('ベスト：'+best.toFixed(2)+' CPS'):''}
+  showBest();
+  var warn=document.getElementById('warn'), panel=document.getElementById('panel'), listEl=document.getElementById('list'),
+      nameEl=document.getElementById('name'), rstat=document.getElementById('rstat'), flagged=false, db=null, uid=null, loaded=false, ptc={touch:0,mouse:0,pen:0,key:0};
+  try{nameEl.value=localStorage.getItem('cps-name')||''}catch(e){}
+  function note(t){rstat.textContent=t;if(state==='done'&&!flagged)warn.textContent=t}
+  function curName(){return nameEl.value.trim().slice(0,16)||'名無し'}
+  function analyze(){
+    var d=[],i;for(i=1;i<ts.length;i++)d.push(Math.max(0,ts[i]-ts[i-1]));
+    if(d.length<6)return {flag:false,cv:null};
+    var m=0;d.forEach(function(x){m+=x});m/=d.length;
+    var v=0;d.forEach(function(x){v+=(x-m)*(x-m)});var cv=Math.sqrt(v/d.length)/m;
+    var s=d.slice().sort(function(a,b){return a-b}),med=s[Math.floor(s.length/2)];
+    var near=d.filter(function(x){return Math.abs(x-med)<=2}).length/d.length;
+    var eq=cv<0.08||near>=0.8, loop=false, lk=0, base=0, cnt=0, j, k;
+    for(i=0;i<d.length;i++)for(j=i+1;j<d.length;j++){base+=Math.abs(d[i]-d[j]);cnt++}
+    base/=cnt;
+    if(base>0){
+      for(k=2;k<=d.length-5;k++){
+        var a=0;for(i=0;i+k<d.length;i++)a+=Math.abs(d[i]-d[i+k]);
+        a/=(d.length-k);
+        if(a/m<0.15&&a/base<0.45){loop=true;lk=k;break}
+      }
+    }
+    return {flag:eq||loop,eq:eq,loop:loop,lk:lk,cv:cv,near:near};
+  }
+  async function submit(c,mn){
+    if(!db||!uid){warn.textContent='ランキング登録にはサインインした状態で開いてください';return}
+    try{
+      var ref=db.doc('rank/'+uid), s=await ref.get();
+      if(s.exists&&Number(s.data().cps)>=c){note('登録済みの自己ベスト以下でした');return}
+      await ref.set({name:curName(),cps:Math.round(c*100)/100,n:n,at:Date.now(),mn:isFinite(mn)?Math.round(mn*10)/10:null,dev:devGuess(mn),tl:timeline()});
+      note('ランキングに登録しました！');
+    }catch(e){note('登録できませんでした（書き込み権限がない可能性があります）')}
+  }
+  var TAGS={touch:'📱タッチ',two:'🖱️両手？',key:'⌨️キー',mouse:'🖱️'};
+  function devGuess(mn){
+    var t=ptc.touch,m=ptc.mouse+ptc.pen,k=ptc.key;
+    if(t>0&&t>=m&&t>=k)return 'touch';
+    if(k>m)return 'key';
+    return (isFinite(mn)&&mn<30)?'two':'mouse';
+  }
+  function timeline(){
+    var B=200,a=[],i;for(i=0;i<B;i++)a.push(0);
+    for(i=0;i<ts.length;i++)a[Math.min(B-1,Math.floor(ts[i]/D*B))]++;
+    return a.map(function(x){return Math.min(35,x).toString(36)}).join('');
+  }
+  function renderList(docs){
+    listEl.textContent='';
+    if(!docs.length){var e=document.createElement('div');e.className='empty';e.textContent='まだ記録がありません';listEl.appendChild(e);return}
+    docs.forEach(function(ds,i){
+      var d=ds.data()||{},r=document.createElement('div');r.className='row'+(ds.id===uid?' me':'');
+      var top=document.createElement('div');top.className='top';
+      var a=document.createElement('span');a.className='rk';a.textContent=(i+1);
+      var b=document.createElement('span');b.className='nm';b.textContent=String(d.name||'名無し');
+      var tg=document.createElement('span');tg.className='tag';tg.textContent=TAGS[d.dev]||'';b.appendChild(tg);
+      var c=document.createElement('span');c.className='sc';c.textContent=Number(d.cps).toFixed(2)+' CPS';
+      top.appendChild(a);top.appendChild(b);top.appendChild(c);
+      var low=document.createElement('div');low.className='low';
+      var st=document.createElement('div');st.className='strip';
+      var tl=typeof d.tl==='string'?d.tl:'',mx=1,k;
+      for(k=0;k<tl.length;k++)mx=Math.max(mx,parseInt(tl.charAt(k),36)||0);
+      for(k=0;k<tl.length;k++){var v=parseInt(tl.charAt(k),36)||0,l=document.createElement('i');if(v)l.className='on';st.appendChild(l)}
+      var mt=document.createElement('span');mt.className='mn';mt.textContent=(d.mn!=null)?('最短 '+Number(d.mn).toFixed(1)+'ms'):'';
+      low.appendChild(st);low.appendChild(mt);
+      r.appendChild(top);r.appendChild(low);listEl.appendChild(r);
+    });
+  }
+  (async function(){
+    try{
+      if(typeof claude==='undefined'){throw 0}
+      var us=await claude.use('user'), d=await claude.use('db');
+      if(!us||!d)throw 0;
+      uid=await us.id();if(!uid)throw 0;db=d;
+      var timer=setTimeout(function(){if(!loaded)listEl.innerHTML='<div class="empty">ランキングに接続できません</div>'},10000);
+      db.collection('rank').orderBy('cps','desc').limit(20).onSnapshot(function(snap){loaded=true;clearTimeout(timer);renderList(snap.docs)},function(){clearTimeout(timer);listEl.innerHTML='<div class="empty">ランキングを読み込めませんでした</div>'});
+    }catch(e){listEl.innerHTML='<div class="empty">ランキングはサインインした状態でのみ使えます</div>'}
+  })();
+  var fsb=document.getElementById('fsbtn'),de=document.documentElement,rf=de.requestFullscreen||de.webkitRequestFullscreen;
+  if(!rf||document.fullscreenEnabled===false)fsb.style.display='none';
+  fsb.onclick=function(){
+    fsb.blur();if(state==='run')return;
+    try{
+      if(document.fullscreenElement||document.webkitFullscreenElement){(document.exitFullscreen||document.webkitExitFullscreen).call(document)}
+      else{var p=rf.call(de);if(p&&p.catch)p.catch(function(){fsb.style.display='none'})}
+    }catch(e){fsb.style.display='none'}
+  };
+  document.addEventListener('fullscreenchange',function(){fsb.textContent=document.fullscreenElement?'✕ 全画面解除':'⛶ 全画面'});
+  document.getElementById('rbtn').onclick=function(){if(state==='run')return;panel.style.display='flex'};
+  document.getElementById('rclose').onclick=function(){panel.style.display='none'};
+  panel.addEventListener('pointerdown',function(e){if(e.target===panel)panel.style.display='none'});
+  document.getElementById('save').onclick=async function(){
+    try{localStorage.setItem('cps-name',nameEl.value.trim().slice(0,16))}catch(e){}
+    if(db&&uid){try{var r=db.doc('rank/'+uid),s=await r.get();if(s.exists)await r.update({name:curName()})}catch(e){}}
+    rstat.textContent='名前を保存しました';
+  };
+  function resize(){
+    dpr=window.devicePixelRatio||1;W=Math.round(innerWidth*dpr);H=Math.round(innerHeight*dpr);
+    cv.width=W;cv.height=H;draw();
+  }
+  function draw(){
+    var cs=getComputedStyle(document.documentElement), acc=cs.getPropertyValue('--accent'), sub=cs.getPropertyValue('--sub'), fg=cs.getPropertyValue('--fg'), bar=cs.getPropertyValue('--bar');
+    g.clearRect(0,0,W,H);
+    var y0=H*0.64, y1=H*0.92;
+    g.fillStyle=bar;g.globalAlpha=.35;g.fillRect(0,y0,W,y1-y0);g.globalAlpha=1;
+    g.font=(11*dpr)+'px system-ui,sans-serif';g.textBaseline='top';
+    for(var s=0;s<=5;s++){
+      var x=s/5*W;g.fillStyle=bar;g.fillRect(Math.min(x,W-dpr),y0-6*dpr,dpr,(y1-y0)+12*dpr);
+      g.fillStyle=sub;g.textAlign=s===5?'right':'left';g.fillText(s+'s',x+(s===5?-3:3)*dpr,y1+8*dpr);
+    }
+    var cw=Math.max(1.5*dpr,W/D);g.fillStyle='#ff8c1a';g.globalAlpha=.6;
+    for(var i=0;i<D;i++){if(marks[i])g.fillRect(i/D*W,0,cw,H)}
+    g.globalAlpha=1;g.fillStyle=fg;
+    if(state!=='idle'){var px=Math.min(elapsed,D)/D*W;g.fillRect(px,0,2*dpr,H)}
+  }
+  function rank(c){
+    if(c<4)return 'ウォーミングアップ中';
+    if(c<6)return '平均的なスピード';
+    if(c<8)return '速い！';
+    if(c<10)return 'かなりの上級者';
+    if(c<13)return 'ほぼ人間離れ';
+    return '伝説級';
+  }
+  function reset(){
+    state='idle';n=0;ts=[];marks.fill(0);elapsed=0;cancelAnimationFrame(raf);warn.textContent='';flagged=false;ptc={touch:0,mouse:0,pen:0,key:0};
+    countEl.textContent='0';timeEl.textContent='5.000 秒';fill.style.transform='scaleX(1)';
+    msg.style.display='';result.style.display='none';timeEl.style.display='';
+    draw();
+  }
+  function tick(){
+    elapsed=performance.now()-t0;var left=Math.max(0,D-elapsed);
+    timeEl.textContent=(left/1000).toFixed(3)+' 秒';
+    fill.style.transform='scaleX('+(left/D)+')';
+    draw();
+    if(left<=0){finish();return}
+    raf=requestAnimationFrame(tick);
+  }
+  function finish(){
+    state='done';lockUntil=performance.now()+700;elapsed=D;
+    var c=n/(D/1000), mn=Infinity, i;
+    for(i=1;i<ts.length;i++)mn=Math.min(mn,Math.max(0,ts[i]-ts[i-1]));
+    countEl.textContent=n;timeEl.style.display='none';msg.style.display='none';
+    result.style.display='flex';cpsEl.textContent=c.toFixed(2);
+    detail.textContent=n+' クリック / 5秒　'+rank(c)+(ts.length>1?'　最短間隔 '+mn.toFixed(1)+'ms '+TAGS[devGuess(mn)]:'');
+    var an=analyze();flagged=an.flag;
+    if(an.flag){warn.textContent=(an.loop&&!an.eq)?'同じ間隔パターンの繰り返しを検知しました（'+an.lk+'クリック周期）。記録・ランキング対象外です':'等間隔の連打を検知しました（ばらつき '+(an.cv*100).toFixed(1)+'%）。記録・ランキング対象外です'}
+    else{if(c>best){best=c;try{localStorage.setItem('cps-best',String(c))}catch(e){}}submit(c,mn)}
+    showBest();draw();
+  }
+  function hit(now){
+    if(state==='done')return;
+    if(state==='idle'){state='run';t0=now;msg.style.display='none';raf=requestAnimationFrame(tick)}
+    var t=Math.max(0,now-t0);
+    if(t>=D)return;
+    n++;countEl.textContent=n;ts.push(t);
+    var i=Math.floor(t);if(marks[i]<255)marks[i]++;
+    draw();
+  }
+  area.addEventListener('pointerdown',function(e){
+    if(e.target===retry)return;
+    if(e.pointerType==='mouse'&&e.button!==0)return;
+    ptc[e.pointerType==='touch'?'touch':(e.pointerType==='pen'?'pen':'mouse')]++;
+    hit(e.timeStamp||performance.now());
+  });
+  document.addEventListener('keydown',function(e){
+    if(e.repeat||panel.style.display==='flex')return;
+    if(e.code==='Space'||e.code==='Enter'){e.preventDefault();if(state==='done'){if(performance.now()>lockUntil)reset()}else{ptc.key++;hit(e.timeStamp||performance.now())}}
+  });
+  retry.addEventListener('click',function(e){e.stopPropagation();if(performance.now()>lockUntil)reset()});
+  area.addEventListener('contextmenu',function(e){e.preventDefault()});
+  addEventListener('resize',resize);
+  ['touchmove','wheel'].forEach(function(t){document.addEventListener(t,function(e){if(e.target.closest&&e.target.closest('#list'))return;e.preventDefault()},{passive:false})});
+  matchMedia('(prefers-color-scheme: dark)').addEventListener('change',draw);
+  resize();
+})();
+</script>
+</body>
+</html>
